@@ -2,30 +2,53 @@ package main
 
 import (
 	"fmt"
-	util "grip2-clu/util"
+	"os"
+	"slices"
+
+	"github.com/DMGDy/grip2-cli/util"
+	"github.com/DMGDy/grip2-cli/commands"
 )
 
+// looking for literal argument of "verbose"
+var verbose = false
+
+func consumeVerbose(args *[]string) {
+	n := -1
+	a := slices.Index(*args, "--verbose")
+	b := slices.Index(*args, "-v")
+	if a > b {
+		n = a
+	} else {
+		n = b
+	}
+	if n != -1 {
+		// Essentially "popping" element from slice
+		*args = slices.Delete(*args, n, n+1)
+		fmt.Printf("**Verbose output enbabled**\n\n")
+	}
+}
+
+// consume "--verbose" "-v:" if provided
 func main() {
-	fmt.Printf("Hello, World!\n")
 
-	fmt.Println("Hello, World!")
-	var opts []Option
+	commands.RegisterCommands()
 
-	bvalue := util.BoolVal(false)
-	opts = append(opts, util.CreateOpts("scanon", "Turns BLE scan on.", bvalue, 0, 0))
+	if len(os.Args) < 2 {
+		//print usage spiel
+		fmt.Println("grip2-cli usage:")
+		// generate all help messages
+		for _, command := range util.ArgMap {
+			command.FlagSet.Usage()
+		}
 
-	bvalue = BoolVal(true)
-	opts = append(opts, util.CreateOpts("scanoff", "Turns BLE scan on.", bvalue, 0, 0))
+		os.Exit(1)
+	}
 
-	ivalue := IntVal(1000800)
-	opts = append(opts, util.CreateOpts("uuid", "This indicates which BLE process to send this message to.", ivalue, 0, 99999999))
 
-	command := util.CreateCommand("ble", 1, 1, opts)
+	_, err := commands.RunCommand(os.Args[1])
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 
-	util.ParseCommand(command)
-
-	af := util.ArgMap["ble"]
-
-	flag := af.flag_set.Lookup("scanon")
-	fmt.Println(flag.Value)
 }

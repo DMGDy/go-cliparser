@@ -1,3 +1,3 @@
-module grip2-cli
+module github.com/DMGDy/grip2-cli
 
 go 1.23.4
