@@ -12,34 +12,34 @@ import (
 
 // treat as C union (change later)
 type Value struct {
-	val_type string
+	ValType string
 	// empty interface for accepting any time
-	val interface{}
+	Val interface{}
 }
 
 // maybe better way ?
 type Range struct {
-	lower int
-	upper int
+	Lower int
+	Upper int
 }
 
 type Command struct {
-	subcommands []Subcommand
+	Subcommands []Subcommand
 	Name string // ie 'ble', 'ping', 'ls', 'camera'
 	// rename to args
-	min_opts int // minimum options to provide
-	max_opts int //
+	MinSubCmds int // minimum options to provide
+	MaxSubCmds int //
 }
 
 // rename
 type Subcommand struct {
 	// if wanted to do something in a range of 
-	val_range Range
+	ValRange Range
 	Name string
-	usage string
-	defval Value
+	Usage string
+	DefVal Value
 	// This program will keep [minv, maxv) as integer values wrapped in Range type
-	minmaxv Range
+	MinMaxv Range
 }
 
 // Actual CLI arguments are given by Flag
@@ -56,25 +56,33 @@ var SubCmdVal = make(map[string]string)
 
 // Satisfy flag.Value interface
 func (r *Range) Set(s string) error {
-	val := RangeVal(s).val.(Range)
-	r.lower = val.lower
-	r.upper = val.upper
+	val := RangeVal(s).Val.(Range)
+	r.Lower = val.Lower
+	r.Upper = val.Upper
 	// no error returned, program will exit with error
 	return nil
 }
 
+func rangeInRange(r1 Range, r2 Range) bool {
+	in_range := false
+	if r1.Lower >= r2.Lower && r1.Upper < r2.Upper {
+		in_range := true
+	}
+	return in_range
+}
+
 func (r *Range) String() string {
-	return fmt.Sprintf("%d-%d", r.lower, r.upper)
+	return fmt.Sprintf("%d-%d", r.Lower, r.Upper)
 }
 
 func intInRange(n int, r Range) bool {
 	in_range := false
 
-	if r.upper == r.lower {
+	if r.Upper == r.Lower {
 		in_range = true
 	}
 
-	if n >= r.lower && n < r.upper {
+	if n >= r.Lower && n < r.Upper {
 		in_range = true
 	}
 
@@ -87,8 +95,8 @@ func ValidateValues(af *ArgFlag) {
 	// read and assign the flags with values provided or assign default values if available
 	fmt.Println(os.Args)
 	af.FlagSet.Parse(os.Args[2:])
-	for _, subcommand := range af.command.subcommands{
-		name := subcommand.name
+	for _, subcommand := range af.command.Subcommands{
+		name := subcommand.Name
 		flag := af.FlagSet.Lookup(name)
 		// if 'nil' subcommand is invalid
 		//	- if time permits, can implement levenshtein distance to see closest subcommand
@@ -100,7 +108,7 @@ func ValidateValues(af *ArgFlag) {
 
 		val := flag.Value.String()
 
-		val_type := subcommand.defval.val_type
+		val_type := subcommand.DefVal.ValType
 		
 
 		// need to cast as returned value is just string
@@ -111,18 +119,18 @@ func ValidateValues(af *ArgFlag) {
 				fmt.Errorf("Could not parse as an integer: %s\n", val)
 			}
 			// add to map if it is in range
-			if intInRange(int_val , subcommand.val_range) {
+			if intInRange(int_val , subcommand.ValRange) {
 				// can provide just string, since it will become string in sending the command
-				SubCmdVal[subcommand.name] = val
+				SubCmdVal[subcommand.Name] = val
 			}
 
 		case "string":
-				SubCmdVal[subcommand.name] = val
+				SubCmdVal[subcommand.Name] = val
 		case "bool":
-				SubCmdVal[subcommand.name] = val
+				SubCmdVal[subcommand.Name] = val
 		case "float64":
 			// implement range value testing
-			SubCmdVal[subcommand.name] = val
+			SubCmdVal[subcommand.Name] = val
 		// TODO: implement Range type parsing
 		case "range":
 			// string -> Range
@@ -132,6 +140,8 @@ func ValidateValues(af *ArgFlag) {
 				fmt.Errorf("Range in incorrect form: %s\n", val)
 				os.Exit(1)
 			}
+
+			if rangeInRange(
 		default:
 			fmt.Errorf("Unrecognized type: %s\n", val_type)
 			os.Exit(1)
@@ -160,32 +170,32 @@ func RangeVal(s string) Value {
 	}
 
 	return Value {
-		val_type: "range",
-		val: Range {
-			lower: lower,
-			upper: upper,
+		ValType: "range",
+		Val: Range {
+			Lower: lower,
+			Upper: upper,
 		},
 	}
 }
 
 func BoolVal(b bool) Value {
 	return Value {
-		val_type: "bool",
-		val: b,
+		ValType: "bool",
+		Val: b,
 	}
 }
 
 func IntVal(i int) Value {
 	return Value {
-		val_type: "int",
-		val: i,
+		ValType: "int",
+		Val: i,
 	}
 }
 
 func StringVal(s string) Value {
 	return Value {
-		val_type: "string",
-		val: s,
+		ValType: "string",
+		Val: s,
 	}
 }
 
@@ -193,38 +203,38 @@ func StringVal(s string) Value {
 
 func Float64Val(f float64) Value {
 	return Value {
-		val_type: "float64",
-		val: f,
+		ValType: "float64",
+		Val: f,
 	}
 }
 
 func ParseCommand(c Command) {
-	set := flag.NewFlagSet(c.name, flag.ExitOnError)
+	set := flag.NewFlagSet(c.Name, flag.ExitOnError)
 
-	for _, o := range c.subcommands{
-		switch o.defval.val_type {
+	for _, o := range c.Subcommands{
+		switch o.DefVal.ValType {
 		case "int":
-			n := o.defval.val.(int)
-			set.Int(o.name, n , o.usage)
+			n := o.DefVal.Val.(int)
+			set.Int(o.Name, n , o.Usage)
 		case "string":
-			s := o.defval.val.(string)
-			set.String(o.name, s, o.usage)
+			s := o.DefVal.Val.(string)
+			set.String(o.Name, s, o.Usage)
 		case "float64":
-			f := o.defval.val.(float64)
-			set.Float64(o.name, f, o.usage)
+			f := o.DefVal.Val.(float64)
+			set.Float64(o.Name, f, o.Usage)
 		case "bool":
-			b := o.defval.val.(bool)
-			set.Bool(o.name, b, o.usage)
+			b := o.DefVal.Val.(bool)
+			set.Bool(o.Name, b, o.Usage)
 		case "range":
-			r := o.defval.val.(Range)
-			set.Var(&r, o.name, o.usage)
+			r := o.DefVal.Val.(Range)
+			set.Var(&r, o.Name, o.Usage)
 		default:
 			os.Exit(1)
 		}
 	}
 	// parsing now for testing, real usage parse ONLY ONCE ALL commands are processed
 
-	ArgMap[c.name] = &ArgFlag {
+	ArgMap[c.Name] = &ArgFlag {
 		FlagSet: set,
 		command: &c,
 	}
@@ -233,16 +243,16 @@ func ParseCommand(c Command) {
 // add parameters for ranges
 func CreateSubCmd(name string, usage string, val Value, minv int, maxv int, low_range int, up_range int) Subcommand {
 	return Subcommand {
-		val_range: Range {
-			lower: 0,
-			upper: 0,
+		ValRange: Range {
+			Lower: 0,
+			Upper: 0,
 		},
-		name: name,
-		usage: usage,
-		defval: val,
-		minmaxv: Range {
-			lower: minv,
-			upper: maxv,
+		Name: name,
+		Usage: usage,
+		DefVal: val,
+		MinMaxv: Range {
+			Lower: minv,
+			Upper: maxv,
 		},
 	}
 }
@@ -250,9 +260,9 @@ func CreateSubCmd(name string, usage string, val Value, minv int, maxv int, low_
 func CreateCommand(name string, min_opts int, max_opts int, subcommands []Subcommand) Command {
 
 	return Command {
-		name: name,
-		min_opts: min_opts,
-		max_opts: max_opts,
+		Name: name,
+		MinSubCmds : min_opts,
+		MaxSubCmds: max_opts,
 		subcommands: subcommands,
 	}
 }
