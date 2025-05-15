@@ -15,125 +15,125 @@ type Ble struct {
 
 var Cmd = util.Command {
 	Name: "ble",
-	min_opts: 1,
-	max_opts: 5,
-	subcommands: []util.Subcommands {
-		Subcommand {
+	MinSubCmds :1,
+	MaxSubCmds: 5,
+	Subcommands: []util.Subcommand {
+		util.Subcommand {
 			Name: "scanon",
-			usage: "turns BLE scan on",
-			val_range: Range {
-				lower: 0,
-				upper: 0,
+			Usage: "turns BLE scan on",
+			ValRange: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-			minmaxv: Range {
-				lower: 0,
-				upper: 0,
+			MinMaxv: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-			defval: Value {
-				val_type: "bool",
-				val: false,
-			},
-		},
-		Subcommand {
-			name: "scanoff",
-			usage: "turns BLE scan off",
-			val_range: Range {
-				lower: 0,
-				upper: 0,
-			},
-			minmaxv: Range {
-				lower: 0,
-				upper: 0,
-			},
-			defval: Value {
-				val_type: "bool",
-				val: false,
+			DefVal: util.Value {
+				ValType: "bool",
+				Val: false,
 			},
 		},
-		Subcommand {
-			name: "uid",
-			usage: "BLE process to send message to (default to 1000800)",
-			val_range: Range {
-				lower: 0,
-				upper: 0,
+		util.Subcommand {
+			Name: "scanoff",
+			Usage: "turns BLE scan off",
+			ValRange: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-			minmaxv: Range {
-				lower: 0,
-				upper: 0,
+			MinMaxv: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-			defval: Value {
-				val_type: "string",
-				val: 1000800,
+			DefVal: util.Value {
+				ValType: "bool",
+				Val: false,
+			},
+		},
+		util.Subcommand {
+			Name: "uid",
+			Usage: "BLE process to send message to (default to 1000800)",
+			ValRange: util.Range {
+				Lower: 0,
+				Upper: 0,
+			},
+			MinMaxv: util.Range {
+				Lower: 0,
+				Upper: 0,
+			},
+			DefVal: util.Value {
+				ValType: "string",
+				Val: "1000800",
 			},
 		},
 		
-		Subcommand {
-			name: "list",
-			usage: "Shows a list of all learned devices",
-			val_range: Range {
-				lower: 0,
-				upper: 0,
+		util.Subcommand {
+			Name: "list",
+			Usage: "Shows a list of all learned devices",
+			ValRange: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-			minmaxv: Range {
-				lower: 0,
-				upper: 0,
+			MinMaxv: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-			defval: Value {
-				val_type: "string",
-				val: "N/A",
-			},
-		},
-
-		Subcommand {
-			name: "delete",
-			usage: "Deletes the device of given uid shown from list",
-			val_range: Range {
-				lower: 0,
-				upper: 0,
-			},
-			minmaxv: Range {
-				lower: 0,
-				upper: 0,
-			},
-			defval: Value {
-				val_type: "string",
-				val: " ",
+			DefVal: util.Value {
+				ValType: "string",
+				Val: "N/A",
 			},
 		},
 
-		Subcommand {
-			name: "pinack",
-			usage: "sends a pin acknowledge message",
-			val_range: Range {
-				lower: 0,
-				upper: 0,
+		util.Subcommand {
+			Name: "delete",
+			Usage: "Deletes the device of given uid shown from list",
+			ValRange: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-			minmaxv: Range {
-				lower: 0,
-				upper: 0,
+			MinMaxv: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-
-			defval: Value {
-				val_type: "string",
-				val: " ",
+			DefVal: util.Value {
+				ValType: "string",
+				Val: " ",
 			},
 		},
 
-		Subcommand {
-			name: "range-example",
-			usage: "test if range implementation works",
-			val_range: Range {
-				lower: 0,
-				upper: 0,
+		util.Subcommand {
+			Name: "pinack",
+			Usage: "sends a pin acknowledge message",
+			ValRange: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
-			minmaxv: Range {
-				lower: 0,
-				upper: 0,
+			MinMaxv: util.Range {
+				Lower: 0,
+				Upper: 0,
 			},
 
-			defval: Value {
-				val_type: "string",
-				val: " ",
+			DefVal: util.Value {
+				ValType: "string",
+				Val: " ",
+			},
+		},
+
+		util.Subcommand {
+			Name: "range-example",
+			Usage: "test if range implementation works",
+			ValRange: util.Range {
+				Lower: 0,
+				Upper: 0,
+			},
+			MinMaxv: util.Range {
+				Lower: 1,
+				Upper: 5,
+			},
+
+			DefVal: util.Value {
+				ValType: "range",
+				Val: "0-1",
 			},
 		},
 	},
@@ -150,8 +150,7 @@ func (b *Ble) Run() (string, error) {
 
 // should assign this->subcmds
 func (b *Ble) Register() {
-	var subcmd []util.Subcommand
 
-	util.ParseCommand(cmd)
+	util.ParseCommand(Cmd)
 }
 
