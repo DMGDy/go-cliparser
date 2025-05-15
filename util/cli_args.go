@@ -5,9 +5,9 @@ package util
 import (
 	"flag"
 	"os"
-	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // treat as C union (change later)
@@ -25,7 +25,7 @@ type Range struct {
 
 type Command struct {
 	subcommands []Subcommand
-	name string // ie 'ble', 'ping', 'ls', 'camera'
+	Name string // ie 'ble', 'ping', 'ls', 'camera'
 	// rename to args
 	min_opts int // minimum options to provide
 	max_opts int //
@@ -35,9 +35,9 @@ type Command struct {
 type Subcommand struct {
 	// if wanted to do something in a range of 
 	val_range Range
-	name string
+	Name string
 	usage string
-	val Value
+	defval Value
 	// This program will keep [minv, maxv) as integer values wrapped in Range type
 	minmaxv Range
 }
@@ -53,6 +53,19 @@ type ArgFlag struct {
 var ArgMap = make(map[string]*ArgFlag)
 
 var SubCmdVal = make(map[string]string)
+
+// Satisfy flag.Value interface
+func (r *Range) Set(s string) error {
+	val := RangeVal(s).val.(Range)
+	r.lower = val.lower
+	r.upper = val.upper
+	// no error returned, program will exit with error
+	return nil
+}
+
+func (r *Range) String() string {
+	return fmt.Sprintf("%d-%d", r.lower, r.upper)
+}
 
 func intInRange(n int, r Range) bool {
 	in_range := false
@@ -70,7 +83,7 @@ func intInRange(n int, r Range) bool {
 
 // validate the passed values for the command
 // return map of subcommands to values (if any)
-func ValidateValues(af *ArgFlag) error {
+func ValidateValues(af *ArgFlag) {
 	// read and assign the flags with values provided or assign default values if available
 	fmt.Println(os.Args)
 	af.FlagSet.Parse(os.Args[2:])
@@ -81,12 +94,13 @@ func ValidateValues(af *ArgFlag) error {
 		//	- if time permits, can implement levenshtein distance to see closest subcommand
 		//	- same check can be used on main Command
 		if flag == nil {
-			return errors.New("Unrecognized subcommand: " + name)
+			fmt.Errorf("Unrecognized subcommand: %s\n", name)
+			os.Exit(1)
 		}
 
 		val := flag.Value.String()
 
-		val_type := subcommand.val.val_type
+		val_type := subcommand.defval.val_type
 		
 
 		// need to cast as returned value is just string
@@ -94,7 +108,7 @@ func ValidateValues(af *ArgFlag) error {
 		case "int":
 			int_val, err := strconv.Atoi(val)
 			if err != nil {
-				return errors.New("Could not parse as an integer: "+val)
+				fmt.Errorf("Could not parse as an integer: %s\n", val)
 			}
 			// add to map if it is in range
 			if intInRange(int_val , subcommand.val_range) {
@@ -109,17 +123,51 @@ func ValidateValues(af *ArgFlag) error {
 		case "float64":
 			// implement range value testing
 			SubCmdVal[subcommand.name] = val
-		// TODO: implement range parsing
+		// TODO: implement Range type parsing
 		case "range":
+			// string -> Range
+			split := strings.Split(val, "-")
+			if len(split) < 2 {
+				// should never get here
+				fmt.Errorf("Range in incorrect form: %s\n", val)
+				os.Exit(1)
+			}
 		default:
-			return errors.New("Unrecognized type:"+val_type)
+			fmt.Errorf("Unrecognized type: %s\n", val_type)
+			os.Exit(1)
 		}
 		
 	}
-	return errors.New("TODO")
 }
 
 // On command implementer to use these properly otherwise parser will fail
+func RangeVal(s string) Value {
+	split := strings.Split(s, "-")
+
+	if len(split) < 2 {
+		fmt.Errorf("Not in form of a propper Range: %s\n", s)
+		fmt.Errorf("Hint: Range should be `1-10`, `5-100`, '4-5`\n")
+		os.Exit(1)
+	}
+
+	lower,err := strconv.Atoi(split[0])
+	upper, err:= strconv.Atoi(split[1])
+
+	if err != nil {
+		fmt.Errorf("Not in form of a propper Range: %s\n", s)
+		fmt.Errorf("Hint: Range should be `1-10`, `5-100`, '4-5`\n")
+		os.Exit(1)
+	}
+
+	return Value {
+		val_type: "range",
+		val: Range {
+			lower: lower,
+			upper: upper,
+		},
+	}
+}
+
 func BoolVal(b bool) Value {
 	return Value {
 		val_type: "bool",
@@ -141,6 +189,8 @@ func StringVal(s string) Value {
 	}
 }
 
+
+
 func Float64Val(f float64) Value {
 	return Value {
 		val_type: "float64",
@@ -152,19 +202,22 @@ func ParseCommand(c Command) {
 	set := flag.NewFlagSet(c.name, flag.ExitOnError)
 
 	for _, o := range c.subcommands{
-		switch o.val.val_type {
+		switch o.defval.val_type {
 		case "int":
-			n := o.val.val.(int)
+			n := o.defval.val.(int)
 			set.Int(o.name, n , o.usage)
 		case "string":
-			s := o.val.val.(string)
+			s := o.defval.val.(string)
 			set.String(o.name, s, o.usage)
 		case "float64":
-			f := o.val.val.(float64)
+			f := o.defval.val.(float64)
 			set.Float64(o.name, f, o.usage)
 		case "bool":
-			b := o.val.val.(bool)
+			b := o.defval.val.(bool)
 			set.Bool(o.name, b, o.usage)
+		case "range":
+			r := o.defval.val.(Range)
+			set.Var(&r, o.name, o.usage)
 		default:
 			os.Exit(1)
 		}
@@ -186,7 +239,7 @@ func CreateSubCmd(name string, usage string, val Value, minv int, maxv int, low_
 		},
 		name: name,
 		usage: usage,
-		val: val,
+		defval: val,
 		minmaxv: Range {
 			lower: minv,
 			upper: maxv,

@@ -5,7 +5,7 @@ package run
 type RunCommand interface {
 	Register()
 	Run() (string, error)
-	ParseArgs() error
+	//ParseArgs() error
 }
 
 type Ipc interface {
