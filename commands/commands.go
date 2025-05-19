@@ -8,10 +8,12 @@ import (
 	"github.com/DMGDy/grip2-cli/util"
 	"github.com/DMGDy/grip2-cli/commands/run"
 	"github.com/DMGDy/grip2-cli/commands/ble"
+	"github.com/DMGDy/grip2-cli/commands/armdisarm"
 )
 
 var Commands = map[string]run.RunCommand {
 	"ble": &ble.Ble{},
+	"armdisarm": &armdisarm.Armdisarm{},
 }
 
 func processCommand(c string, r run.RunCommand) {
@@ -20,7 +22,6 @@ func processCommand(c string, r run.RunCommand) {
 
 		// parse and validate
 		af.FlagSet.Parse(os.Args[2:])
-
 }
 
 func RegisterCommands() {
