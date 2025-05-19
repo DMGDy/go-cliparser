@@ -8,15 +8,39 @@ import (
 	"github.com/DMGDy/grip2-cli/util"
 )
 
+var description = `
+    Usage: scanon|scanoff|list|delete|pinack [uid]
+    Perform various operation on the Bluetooth system.
+
+    scanon turns BLE scan on.
+    scanoff turns BLE scan off.
+    pinack sends a pin acknowledge message.
+    Those take an optional uid.  This indicates which BLE process to send this message to.
+    1000800 is for the one on the panel, and is also the default if no uid is specified.
+    1000801 is for tablet 1, 1000802 for tablet two etc (check that this is true??).
+
+    list shows a list of all learned devices.
+
+    delete deletes the device.  This requires the uid of the device, which is the ID shown
+    from the list command.
+
+    Examples:
+      ./cli ble list
+      ./cli ble scanon
+      ./cli ble scanon 1000802
+      ./cli ble delete 8001
+`
 
 
 type Ble struct {
 }
 
+
 var Cmd = util.Command {
 	Name: "ble",
-	MinSubCmds :1,
+	MinSubCmds: 1,
 	MaxSubCmds: 5,
+	Description: description,
 	Subcommands: []util.Subcommand {
 		util.Subcommand {
 			Name: "scanon",
@@ -34,6 +58,7 @@ var Cmd = util.Command {
 				Val: false,
 			},
 		},
+
 		util.Subcommand {
 			Name: "scanoff",
 			Usage: "turns BLE scan off",
@@ -50,6 +75,7 @@ var Cmd = util.Command {
 				Val: false,
 			},
 		},
+
 		util.Subcommand {
 			Name: "uid",
 			Usage: "BLE process to send message to (default to 1000800)",
@@ -80,7 +106,7 @@ var Cmd = util.Command {
 			},
 			DefVal: util.Value {
 				ValType: "string",
-				Val: "N/A",
+				Val: "",
 			},
 		},
 
@@ -97,17 +123,14 @@ var Cmd = util.Command {
 			},
 			DefVal: util.Value {
 				ValType: "string",
-				Val: " ",
+				Val: "",
 			},
 		},
 
 		util.Subcommand {
 			Name: "pinack",
 			Usage: "sends a pin acknowledge message",
-			ValRange: util.Range {
-				Lower: 0,
-				Upper: 0,
-			},
+
 			MinMaxv: util.Range {
 				Lower: 0,
 				Upper: 0,
@@ -115,17 +138,13 @@ var Cmd = util.Command {
 
 			DefVal: util.Value {
 				ValType: "string",
-				Val: " ",
+				Val: "",
 			},
 		},
 
 		util.Subcommand {
 			Name: "range-example",
 			Usage: "test if range implementation works",
-			ValRange: util.Range {
-				Lower: 0,
-				Upper: 0,
-			},
 			MinMaxv: util.Range {
 				Lower: 1,
 				Upper: 5,
@@ -133,12 +152,13 @@ var Cmd = util.Command {
 
 			DefVal: util.Value {
 				ValType: "range",
-				Val: "0-1",
+				Val: util.RequiredRange(),
 			},
 		},
 	},
 }
 
+// try to find a way to define elsewhere here
 var _ run.RunCommand = (*Ble)(nil)
 
 func (b *Ble) Run() (string, error) {
