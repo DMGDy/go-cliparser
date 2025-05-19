@@ -23,7 +23,6 @@ type Armdisarm struct {
 }
 
 
-		util.Subcommand {
 var Cmd = util.Command {
 	Name: "armdisarm",
 	MinSubCmds: 1,
@@ -31,23 +30,23 @@ var Cmd = util.Command {
 	Description: description,
 	Subcommands: []util.Subcommand {
 		util.Subcommand {
-			Name: delay,
+			Name: "delay",
 			Usage: "Number of seconds to sleep between each arm/disarm operation",
-			DefValue: Value {
-				Type: "float64",
-				Val: util.EMPTY_F64
+			DefVal: util.Value {
+				ValType: "float64",
+				Val: util.EMPTY_F64,
 			},
-			MinMaxv: Range {
+			MinMaxv: util.Range {
 				// delay time cannot be negative
-				Lower: 0;
-				Upper: util.EMPTY_INT
+				Lower: 0,
+				Upper: 999,
 			},
 		},
 	},
 }
 
 // try to find a way to define elsewhere here
-var _ run.RunCommand = (*ArmDisarm)(nil)
+var _ run.RunCommand = (*Armdisarm)(nil)
 
 func (a *Armdisarm) Run() (string, error) {
 	for k,v := range util.SubCmdVal {
