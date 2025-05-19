@@ -1,7 +1,7 @@
 package util
 
 // usage format to add
-// ./cli [COMMAND] --[ARGUMENTS] | --[ARGUMENTS] [VAL] | -[ARGUMENTS] [VAL] | --[ARGUMENTS]=[VAL] ( --verbose | -verbose )
+// ./cli [COMMAND] --[SUBCOMMAND] | --[SUBCOMMAND] [VAL] | -[SUBCOMMAND] [VAL] | --[SUBCOMMAND]=[VAL] | (--verbose | -verbose)
 import (
 	"flag"
 	"os"
@@ -26,7 +26,7 @@ type Range struct {
 type Command struct {
 	Subcommands []Subcommand
 	Name string // ie 'ble', 'ping', 'ls', 'camera'
-	// rename to args
+	Description string
 	MinSubCmds int // minimum options to provide
 	MaxSubCmds int //
 }
@@ -34,10 +34,10 @@ type Command struct {
 // rename
 type Subcommand struct {
 	// if wanted to do something in a range of 
-	ValRange Range
-	Name string
-	Usage string
-	DefVal Value
+	ValRange Range // range to operate on
+	Name string // name of subcommand
+	Usage string // description on how to use subcommand
+	DefVal Value // default value
 	// This program will keep [minv, maxv) as integer values wrapped in Range type
 	MinMaxv Range
 }
@@ -48,31 +48,104 @@ type ArgFlag struct {
 	command *Command
 }
 
+var usage = `
+./cli [COMMAND] --[SUBCOMMAND] | --[SUBCOMMAND] [VAL] | -[SUBCOMMAND] [VAL] | --[SUBCOMMAND]=[VAL] | (--verbose | -verbose)
+`
+
+var examples = `python3 grip_cli.py ping
+    cli ping
+    cli ping ip=158.100.69.89
+    cli ping ip=158.100.69.89 port=12350
+    cli ping ip=158.100.69.89 verbose
+    cli zoneset trip 3
+`
+
 // to be used and exported outside this package
 // string being the command (ie. 'ble', 'camera', 'ls')
 var ArgMap = make(map[string]*ArgFlag)
 
 var SubCmdVal = make(map[string]string)
 
-// Satisfy flag.Value interface
+// COULD BE BETTER
+const (
+	// just to make sure not everything is not 0
+	EMPTY_STR = ""
+	EMPTY_INT = -1
+	EMPTY_F64 = -1.0
+
+	// to check if it should have a value
+	REQ_STR = " "
+	REQ_INT = -2
+	REQ_F64 = -2.0
+	
+)
+
+func floatInRange(f float64, r Range) bool {
+	return f >= float64(r.Lower) && f < float64(r.Upper)
+}
+
+func EmptyRange() Range {
+	return Range {
+		Lower: 0,
+		Upper: 0,
+	}
+}
+
+// very unlikely to be hit so good numbers to check
+func RequiredRange() Range {
+	return Range {
+		Lower: 420,
+		Upper: 69,
+	}
+}
+
+
+// convert string in form of 'n-m' to Range object or panic
+func stringToRange(s string) Range {
+	split := strings.Split(s, "-")
+
+	if len(split) < 2 {
+		fmt.Printf("Not in form of a propper Range: %s\n", s)
+		fmt.Printf("Hint: Range should be `1-10`, `5-100`, '4-5`\n")
+		os.Exit(1)
+	}
+
+	lower,err := strconv.Atoi(split[0])
+	upper, err:= strconv.Atoi(split[1])
+
+	if err != nil {
+		fmt.Printf("Not in form of a propper Range: %s\n", s)
+		fmt.Printf("Hint: Range should be `1-10`, `5-100`, '4-5`\n")
+		os.Exit(1)
+	}
+
+	return Range {
+		Lower: lower,
+		Upper: upper,
+	}
+
+}
+
+// Satisfy flag.Value interface 'Set(string)-> error' and 'String()->string'
 func (r *Range) Set(s string) error {
-	val := RangeVal(s).Val.(Range)
+	val := stringToRange(s)
 	r.Lower = val.Lower
 	r.Upper = val.Upper
 	// no error returned, program will exit with error
 	return nil
 }
 
-func rangeInRange(r1 Range, r2 Range) bool {
-	in_range := false
-	if r1.Lower >= r2.Lower && r1.Upper < r2.Upper {
-		in_range := true
-	}
-	return in_range
-}
-
 func (r *Range) String() string {
 	return fmt.Sprintf("%d-%d", r.Lower, r.Upper)
+}
+
+
+func isInRange(r1 Range, r2 Range) bool {
+	return r1.Lower >= r2.Lower && r1.Upper < r2.Upper
+}
+
+func isEmptyRange(r Range) bool {
+	return r.Lower == EmptyRange().Lower && r.Upper == EmptyRange().Upper
 }
 
 func intInRange(n int, r Range) bool {
@@ -95,20 +168,32 @@ func ValidateValues(af *ArgFlag) {
 	// read and assign the flags with values provided or assign default values if available
 	fmt.Println(os.Args)
 	af.FlagSet.Parse(os.Args[2:])
-	for _, subcommand := range af.command.Subcommands{
+	command := af.command
+	subcommands := af.command.Subcommands
+
+
+	// 2 includes filename and command
+	if len(os.Args) - 2 < command.MinSubCmds {
+		fmt.Printf("Not enough subcommands provided. Minimum of %d, supplied %d\n", command.MinSubCmds, len(os.Args) - 2)
+		fmt.Println("============================================================")
+		PrintHelpCmd(os.Args[1])
+		os.Exit(1)
+	}
+	for _, subcommand := range subcommands{
 		name := subcommand.Name
 		flag := af.FlagSet.Lookup(name)
 		// if 'nil' subcommand is invalid
 		//	- if time permits, can implement levenshtein distance to see closest subcommand
 		//	- same check can be used on main Command
 		if flag == nil {
-			fmt.Errorf("Unrecognized subcommand: %s\n", name)
+			fmt.Printf("Unrecognized subcommand: %s\n", name)
 			os.Exit(1)
 		}
 
 		val := flag.Value.String()
 
 		val_type := subcommand.DefVal.ValType
+
 		
 
 		// need to cast as returned value is just string
@@ -116,7 +201,7 @@ func ValidateValues(af *ArgFlag) {
 		case "int":
 			int_val, err := strconv.Atoi(val)
 			if err != nil {
-				fmt.Errorf("Could not parse as an integer: %s\n", val)
+				fmt.Printf("Could not parse as an integer: %s\n", val)
 			}
 			// add to map if it is in range
 			if intInRange(int_val , subcommand.ValRange) {
@@ -129,82 +214,40 @@ func ValidateValues(af *ArgFlag) {
 		case "bool":
 				SubCmdVal[subcommand.Name] = val
 		case "float64":
+			float, err := strconv.ParseFloat(val, 64)
+			if err != nil  {
+				fmt.Printf("Could not convert string to float: %s\n", val)
+				os.Exit(1)
+			}
+
 			// implement range value testing
+			r := subcommand.MinMaxv
+			if !floatInRange(float, subcommand.MinMaxv) {
+				fmt.Printf("Provided float is out of bounds: %f, should be between [%d-%d)", float, r.Lower, r.Upper)
+				os.Exit(1)
+			}
 			SubCmdVal[subcommand.Name] = val
 		// TODO: implement Range type parsing
 		case "range":
 			// string -> Range
-			split := strings.Split(val, "-")
-			if len(split) < 2 {
-				// should never get here
-				fmt.Errorf("Range in incorrect form: %s\n", val)
-				os.Exit(1)
-			}
 
-			if rangeInRange(
+			provided := stringToRange(val)
+			fmt.Println(val)
+
+			if isEmptyRange(provided) {
+				continue
+			}
+			boundary := subcommand.MinMaxv
+
+			if ! isInRange(provided, boundary) {
+				fmt.Printf("Provided range exceeds boundaries of %d-%d (supplied %d-%d)\n", boundary.Lower, boundary.Upper, provided.Lower, provided.Upper)
+				os.Exit(2)
+			}
 		default:
-			fmt.Errorf("Unrecognized type: %s\n", val_type)
+			fmt.Printf("Unrecognized type: %s\n", val_type)
 			os.Exit(1)
 		}
 		
-	}
-}
-
-// On command implementer to use these properly otherwise parser will fail
-func RangeVal(s string) Value {
-	split := strings.Split(s, "-")
-
-	if len(split) < 2 {
-		fmt.Errorf("Not in form of a propper Range: %s\n", s)
-		fmt.Errorf("Hint: Range should be `1-10`, `5-100`, '4-5`\n")
-		os.Exit(1)
-	}
-
-	lower,err := strconv.Atoi(split[0])
-	upper, err:= strconv.Atoi(split[1])
-
-	if err != nil {
-		fmt.Errorf("Not in form of a propper Range: %s\n", s)
-		fmt.Errorf("Hint: Range should be `1-10`, `5-100`, '4-5`\n")
-		os.Exit(1)
-	}
-
-	return Value {
-		ValType: "range",
-		Val: Range {
-			Lower: lower,
-			Upper: upper,
-		},
-	}
-}
-
-func BoolVal(b bool) Value {
-	return Value {
-		ValType: "bool",
-		Val: b,
-	}
-}
-
-func IntVal(i int) Value {
-	return Value {
-		ValType: "int",
-		Val: i,
-	}
-}
-
-func StringVal(s string) Value {
-	return Value {
-		ValType: "string",
-		Val: s,
-	}
-}
-
-
-
-func Float64Val(f float64) Value {
-	return Value {
-		ValType: "float64",
-		Val: f,
 	}
 }
 
@@ -240,29 +283,17 @@ func ParseCommand(c Command) {
 	}
 }
 
-// add parameters for ranges
-func CreateSubCmd(name string, usage string, val Value, minv int, maxv int, low_range int, up_range int) Subcommand {
-	return Subcommand {
-		ValRange: Range {
-			Lower: 0,
-			Upper: 0,
-		},
-		Name: name,
-		Usage: usage,
-		DefVal: val,
-		MinMaxv: Range {
-			Lower: minv,
-			Upper: maxv,
-		},
-	}
+func PrintHelpCmd(cmd string) {
+	af := ArgMap[cmd]
+	fmt.Println(af.command.Description)
+	af.FlagSet.Usage()
 }
 
-func CreateCommand(name string, min_opts int, max_opts int, subcommands []Subcommand) Command {
-
-	return Command {
-		Name: name,
-		MinSubCmds : min_opts,
-		MaxSubCmds: max_opts,
-		subcommands: subcommands,
+func PrintHelpFull() {
+	fmt.Println("cli usage: "+usage)
+	for _, command := range ArgMap {
+		command.FlagSet.Usage()
 	}
+
+	fmt.Println(examples)
 }
