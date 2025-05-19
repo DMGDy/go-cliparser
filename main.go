@@ -34,13 +34,7 @@ func main() {
 	commands.RegisterCommands()
 
 	if len(os.Args) < 2 {
-		//print usage spiel
-		fmt.Println("grip2-cli usage:")
-		// generate all help messages
-		for _, command := range util.ArgMap {
-			command.FlagSet.Usage()
-		}
-
+		util.PrintHelpFull()
 		os.Exit(1)
 	}
 
