@@ -3,8 +3,8 @@
 BIN="cli"
 LDFLAGS=""
 #LDFLAGS="-s -w"
-export GOOS linux
-export GOARCH amd64
+export GOOS=linux
+export GOARCH=amd64
 stripped=false
 
 for arg in "$@"; do
