@@ -1,13 +1,13 @@
 # grip2-cli
 
-Command line client for interfacing with GRIP2 Panel. A sort of "continuatio" and rewrite of the original 
-![grip-cli](https://bitbucket.resideo.com/projects/GRIP/repos/grip-cli/browse) program from Python to Go. 
+Command line client for interfacing with GRIP2 Panel. A rewrite of the original 
+[grip-cli](https://bitbucket.resideo.com/projects/GRIP/repos/grip-cli/browse) program from Python to Go. 
 
 
 ## Quirks
 This program is entirely written in Go's standard library, significantly reducing dependency overhead and resulting binary size 
 (compressed and stripped can be down to 500MB). Theoretically, software maintinance should be easier as all code present is what
-will run.
+will run (assuming this implementation is satisfactory for the usecase and is able to implement the necessary commands with relative ease).
 
 ## Building
 ```
