@@ -25,3 +25,12 @@ eg.
 ```
 ./build.sh stripped deploy
 ```
+
+## TODO (as of #24cf72)
+1. [ ] Implement basic mqtt client
+    [ ] Test by implementing `armdisarm`
+2. [ ] Implement some `getinfo` or equivilant command
+3. [ ] Implement `trouble`
+
+## Current Issues
+None yet...
