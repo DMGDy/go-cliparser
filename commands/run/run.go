@@ -8,6 +8,3 @@ type RunCommand interface {
 	//ParseArgs() error
 }
 
-type Ipc interface {
-	ProcessResponse() string
-}
