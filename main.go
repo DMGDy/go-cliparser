@@ -5,8 +5,8 @@ import (
 	"os"
 	"slices"
 
-	"github.com/DMGDy/grip2-cli/util"
-	"github.com/DMGDy/grip2-cli/commands"
+	"bitbucket.resideo.com/276733/grip2-cli/util"
+	"bitbucket.resideo.com/276733/grip2-cli/commands"
 )
 
 // looking for literal argument of "verbose"

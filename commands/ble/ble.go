@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"errors"
 
-	"github.com/DMGDy/grip2-cli/commands/run"
-	"github.com/DMGDy/grip2-cli/util"
+	"bitbucket.resideo.com/276733/grip2-cli/commands/run"
+	"bitbucket.resideo.com/276733/grip2-cli/util"
 )
 
 var description = `
