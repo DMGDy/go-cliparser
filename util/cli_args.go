@@ -68,16 +68,11 @@ var SubCmdVal = make(map[string]string)
 
 // COULD BE BETTER
 const (
-	// just to make sure not everything is not 0
 	EMPTY_STR = ""
-	EMPTY_INT = -1
-	EMPTY_F64 = -1.0
+	EMPTY_INT = 0
+	EMPTY_F64 = 0.0
 
-	// to check if it should have a value
-	REQ_STR = " "
-	REQ_INT = -2
-	REQ_F64 = -2.0
-	
+	MAX_I32 = 2<<31
 )
 
 func floatInRange(f float64, r Range) bool {
@@ -106,7 +101,7 @@ func stringToRange(s string) Range {
 
 	if len(split) < 2 {
 		fmt.Printf("Not in form of a propper Range: %s\n", s)
-		fmt.Printf("Hint: Range should be `1-10`, `5-100`, '4-5`\n")
+		fmt.Printf("Hint: Range should be '1-10', '5-100', '4-5'\n")
 		os.Exit(1)
 	}
 
@@ -115,7 +110,7 @@ func stringToRange(s string) Range {
 
 	if err != nil {
 		fmt.Printf("Not in form of a propper Range: %s\n", s)
-		fmt.Printf("Hint: Range should be `1-10`, `5-100`, '4-5`\n")
+		fmt.Printf("Hint: Range should be '1-10', '5-100', '4-5'\n")
 		os.Exit(1)
 	}
 
@@ -166,7 +161,6 @@ func intInRange(n int, r Range) bool {
 // return map of subcommands to values (if any)
 func ValidateValues(af *ArgFlag) {
 	// read and assign the flags with values provided or assign default values if available
-	fmt.Println(os.Args)
 	af.FlagSet.Parse(os.Args[2:])
 	command := af.command
 	subcommands := af.command.Subcommands
@@ -202,6 +196,7 @@ func ValidateValues(af *ArgFlag) {
 			int_val, err := strconv.Atoi(val)
 			if err != nil {
 				fmt.Printf("Could not parse as an integer: %s\n", val)
+				os.Exit(1)
 			}
 			// add to map if it is in range
 			if intInRange(int_val , subcommand.ValRange) {
@@ -223,7 +218,7 @@ func ValidateValues(af *ArgFlag) {
 			// implement range value testing
 			r := subcommand.MinMaxv
 			if !floatInRange(float, subcommand.MinMaxv) {
-				fmt.Printf("Provided float is out of bounds: %f, should be between [%d-%d)", float, r.Lower, r.Upper)
+				fmt.Printf("Provided float is out of bounds: %f, should be between [%d-%d)\n", float, r.Lower, r.Upper)
 				os.Exit(1)
 			}
 			SubCmdVal[subcommand.Name] = val
@@ -272,6 +267,7 @@ func ParseCommand(c Command) {
 			r := o.DefVal.Val.(Range)
 			set.Var(&r, o.Name, o.Usage)
 		default:
+			fmt.Printf("not a recognized argument type\n")
 			os.Exit(1)
 		}
 	}
