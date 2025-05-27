@@ -5,10 +5,10 @@ import (
 	"errors"
 	"os"
 
-	"github.com/DMGDy/grip2-cli/util"
-	"github.com/DMGDy/grip2-cli/commands/run"
-	"github.com/DMGDy/grip2-cli/commands/ble"
-	"github.com/DMGDy/grip2-cli/commands/armdisarm"
+	"bitbucket.resideo.com/276733/grip2-cli/util"
+	"bitbucket.resideo.com/276733/grip2-cli/commands/run"
+	"bitbucket.resideo.com/276733/grip2-cli/commands/ble"
+	"bitbucket.resideo.com/276733/grip2-cli/commands/armdisarm"
 )
 
 var Commands = map[string]run.RunCommand {
