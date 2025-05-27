@@ -9,11 +9,13 @@ import (
 	"bitbucket.resideo.com/276733/grip2-cli/commands/run"
 	"bitbucket.resideo.com/276733/grip2-cli/commands/ble"
 	"bitbucket.resideo.com/276733/grip2-cli/commands/armdisarm"
+	"bitbucket.resideo.com/276733/grip2-cli/commands/bypass"
 )
 
 var Commands = map[string]run.RunCommand {
 	"ble": &ble.Ble{},
 	"armdisarm": &armdisarm.Armdisarm{},
+	"bypass": &bypass.Bypass{},
 }
 
 func processCommand(c string, r run.RunCommand) {
