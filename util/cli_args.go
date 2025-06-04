@@ -38,6 +38,7 @@ type Subcommand struct {
 	Name string // name of subcommand
 	Usage string // description on how to use subcommand
 	DefVal Value // default value
+	RequiredVal bool // if value is required for this subcommand 
 	// This program will keep [minv, maxv) as integer values wrapped in Range type
 	MinMaxv Range
 }
@@ -52,13 +53,14 @@ var usage = `
 ./cli [COMMAND] --[SUBCOMMAND] | --[SUBCOMMAND] [VAL] | -[SUBCOMMAND] [VAL] | --[SUBCOMMAND]=[VAL] | (--verbose | -verbose)
 `
 
-var examples = `python3 grip_cli.py ping
-    cli ping
-    cli ping ip=158.100.69.89
-    cli ping ip=158.100.69.89 port=12350
-    cli ping ip=158.100.69.89 verbose
-    cli zoneset trip 3
+var examples = `$ ./cli armdisarm --arm
+    $ ./cli armdisarm --delay=5
+    $ ./cly bypass -on --zone=1 --user_code=1234
+    $ ./cli getinfo --partition=1
+    $ ./cli getinfo --panel=1
 `
+
+var Verbose = false
 
 // to be used and exported outside this package
 // string being the command (ie. 'ble', 'camera', 'ls')
@@ -97,7 +99,7 @@ func RequiredRange() Range {
 
 // convert string in form of 'n-m' to Range object or panic
 func stringToRange(s string) Range {
-	split := strings.Split(s, "-")
+	split := strings.Split(s, ",")
 
 	if len(split) < 2 {
 		fmt.Printf("Not in form of a propper Range: %s\n", s)
@@ -172,7 +174,14 @@ func ValidateValues(af *ArgFlag) {
 		fmt.Println("============================================================")
 		PrintHelpCmd(os.Args[1])
 		os.Exit(1)
+	} else if len(os.Args) - 2 > command.MaxSubCmds {
+		fmt.Printf("Too many subcommands provided. Maximum of %d, supplied %d\n", command.MaxSubCmds, len(os.Args) - 2)
+		fmt.Println("============================================================")
+		PrintHelpCmd(os.Args[1])
+		os.Exit(1)
+
 	}
+
 	for _, subcommand := range subcommands{
 		name := subcommand.Name
 		flag := af.FlagSet.Lookup(name)
