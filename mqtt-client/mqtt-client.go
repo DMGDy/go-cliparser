@@ -1,7 +1,6 @@
 package mqtt_client
 
 import (
-	"fmt"
 	"net"
 	"errors"
 )
@@ -14,9 +13,8 @@ type responsePacket struct {
 
 const (
 	SUBSCRIBE_TOPIC = "@/Panel/Partition_/#"
-	PORT = "1883"
+	PORT = ":1883"
 	//IP = "localhost:"
-	IP = "localhost:"
 
 	CONNECT    = 1
 	CONNACK    = 2
@@ -28,12 +26,13 @@ const (
 	QOS        = 2
 	// dont need DUP or RET flags
 
-	KEEPALIVE  = 30
+	KEEPALIVE  = 5
 
 	CLIENT_ID  = "cli_client"
 	MAX_PAYLOAD_LEN = 5096
 )
 
+var IP = "localhost"
 var conn net.Conn
 
 func InitClient() error {
@@ -50,12 +49,11 @@ func InitClient() error {
 
 	response := make([]byte, 24)
 
-	_, err = conn.Read(response)
+	n, err := conn.Read(response)
 	if err != nil {
 		return err
 	}
-	fmt.Println(response)
-	decode(response)
+	decode(response, n)
 
 
 	return nil
@@ -66,55 +64,56 @@ func CloseClient() {
 }
 
 
-func sendConnect(conn net.Conn) {
+func sendConnect(conn net.Conn) error {
 	// fixed header
-	fixedHeader := []byte{CONNECT << 4, 0} // Length will be updated later
+	fixed_header := []byte{CONNECT << 4, 0} // Length will be updated later
 
-	protocolName := []byte{0, 4, 'M', 'Q', 'T', 'T'}
+	protocol_name := []byte{0, 4, 'M', 'Q', 'T', 'T'}
 	// Variable header
 	
 
-	protocolLevel := []byte{4}
+	protocol_level := []byte{4}
 
-	connectFlags := []byte{QOS}
+	conn_flags := []byte{QOS}
 
-	keepAlive := []byte{0, KEEPALIVE}
+	keep_alive := []byte{0, KEEPALIVE}
 
-	clientIDLen := len(CLIENT_ID)
-	clientIDLenBytes := []byte{byte(clientIDLen >> 8), byte(clientIDLen)}
-	clientIDBytes := []byte(CLIENT_ID)
+	client_id_len := len(CLIENT_ID)
+	client_id_len_bytes := []byte{byte(client_id_len >> 8), byte(client_id_len)}
+	client_id_bytes := []byte(CLIENT_ID)
 
-	remainingLength := len(protocolName) + len(protocolLevel) + len(connectFlags) + len(keepAlive) + len(clientIDLenBytes) + len(clientIDBytes)
+	remaining_len := len(protocol_name) + len(protocol_level) + len(conn_flags) + len(keep_alive) + len(client_id_len_bytes) + len(client_id_bytes)
 
 
-	fixedHeader[1] = byte(remainingLength)
+	fixed_header[1] = byte(remaining_len)
 
-	packet := append(fixedHeader, protocolName...)
+	packet := append(fixed_header, protocol_name...)
 	
-	packet = append(packet, protocolLevel...)
-	packet = append(packet, connectFlags...)
-	packet = append(packet, keepAlive...)
+	packet = append(packet, protocol_level...)
+	packet = append(packet, conn_flags...)
+	packet = append(packet, keep_alive...)
 
 	
-	packet = append(packet, clientIDLenBytes...)
-	packet = append(packet, clientIDBytes...)
+	packet = append(packet, client_id_len_bytes...)
+	packet = append(packet, client_id_bytes...)
 	
 	
 
 	_, err := conn.Write(packet)
 	if err != nil {
-		fmt.Println("Error sending CONNECT packet:", err)
+		return err
 	}
+	return nil
 }
 
-func subscribe(conn net.Conn) {
+func subscribe(sub_topic string) error {
 	fixed_header := []byte{0x82}
 
 	packet_id := []byte{0,1}
 
-	topic_len := len(SUBSCRIBE_TOPIC)
+	topic_len := len(sub_topic)
 	topic_len_bytes := []byte{byte(topic_len>>8), byte(topic_len)}
-	topic_bytes := []byte(SUBSCRIBE_TOPIC)
+	topic_bytes := []byte(sub_topic)
 
 	qos_bytes := []byte{2}
 
@@ -129,12 +128,12 @@ func subscribe(conn net.Conn) {
 
 	_, err := conn.Write(packet)
 	if err != nil {
-		fmt.Println("Error sending SUBSCRIBE packet,", err)
-		return
+		return err
 	}
+	return nil
 }
 
-func publish(conn net.Conn, topic string, payload string) {
+func publish(topic string, payload string) error {
 	fixed_header := []byte{PUBLISH<< 4, 0}
 
 	topic_len := len(topic)
@@ -152,16 +151,17 @@ func publish(conn net.Conn, topic string, payload string) {
 
 	_, err := conn.Write(packet)
 	if err != nil {
-		fmt.Println("Error sending PUBLISH packet,", err)
-		return
+		return err
 	}
+	return nil
 }
 
 /* deconstruct packet bytes
 	determine what kind of message (CONNACK, SUBACK, PUBLISH)
 	get message len (end of control header OR end of variable header)
+	n being the amount of bytes read so we can determine whent to stop reading
 */
-func decode(response []byte) responsePacket {
+func decode(response []byte, n int) responsePacket {
 	// first byte is control header
 	control_header := response[0]
 	// upper 4 bytes is message type
@@ -173,23 +173,28 @@ func decode(response []byte) responsePacket {
 		return responsePacket {
 			message_type: CONNACK,
 		}
-	case(SUBACK): 
+	case(SUBACK):
 		return responsePacket {
 			message_type: SUBACK,
 		}
 	/*
 	case(PUBACK): 
-		fmt.Println("PUBACK received")
 	*/
-	case(PUBLISH): 
-		topic_info_len := response[2]
-		// if its 2, perfect
+
+	// only case when we care about topic and payload
+	case(PUBLISH):
+		// if its not zero, its a length
 		var topic_len = 0
-		if topic_info_len == 2 {
-			topic_len = int(response[4])
+		var offset = 0
+		for i := 2; i < 5; i++ {
+			if int(response[i]) == 0 {
+				offset = i+1
+				topic_len = int(response[offset])
+				break
+			}
 		}
-		topic := string(response[4:4+topic_len])
-		payload := string(response[4+topic_len:])
+		topic := string(response[offset+1:offset+1+topic_len])
+		payload := string(response[offset+1+topic_len:n])
 		return responsePacket {
 			message_type: PUBLISH,
 			topic: topic,
@@ -202,28 +207,33 @@ func decode(response []byte) responsePacket {
 
 }
 
-func SendCommand(topic string, payload string)(string, error) {
+func SendCommand(sub_topic string, pub_topic string, payload string)(string, error) {
 
-	subscribe(conn)
+	err := subscribe(sub_topic)
+	if err != nil {
+		return "", errors.New("Error sending SUBSCRIBE:" + err.Error())
+	}
 
 	sub_response := make([]byte, 8)
 
-	_, err := conn.Read(sub_response)
-	if err != nil {
-		return "", errors.New("could not Subscribe")
+	n, err := conn.Read(sub_response)
+	if err != nil || n == 0{
+		return "", errors.New("Error reading SUBACK"+err.Error())
 	}
-	fmt.Println(sub_response)
-	decode(sub_response)
+	decode(sub_response, n)
 
 
-	publish(conn, topic, payload)
-	pub_response := make([]byte, MAX_PAYLOAD_LEN)
-	_, err = conn.Read(pub_response)
+	err = publish(pub_topic, payload)
 	if err != nil {
+		return "", errors.New("Error sending PUBLISH with: "+err.Error())
+	}
+	pub_response := make([]byte, MAX_PAYLOAD_LEN)
+	n, err = conn.Read(pub_response)
+	if err != nil || n == 0{
 		return "", err
 	}
 
-	decoded_response := decode(pub_response)
+	decoded_response := decode(pub_response, n)
 
 	return decoded_response.payload, nil
 }
