@@ -4,7 +4,7 @@ package run
 // that calls the sendIPC
 type RunCommand interface {
 	Register()
-	Run() (string, error)
+	Run() error
 	//ParseArgs() error
 }
 

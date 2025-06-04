@@ -68,12 +68,16 @@ var Cmd = util.Command {
 	},
 }
 
+const (
+	SUB_TOPIC = "@/Panel/Partition_/#"
+)
+
 // try to find a way to define elsewhere here
 var _ run.RunCommand = (*Bypass)(nil)
 
-func (b *Bypass) Run() (string, error) {
+func (b *Bypass) Run() error {
 	topic := "@/SET/Panel/Zone_/*"
-	var mode  = 0
+var mode  = 0
 
 	on, err:= strconv.ParseBool(util.SubCmdVal["on"])
 	off, err:= strconv.ParseBool(util.SubCmdVal["off"])
@@ -87,15 +91,15 @@ func (b *Bypass) Run() (string, error) {
 	user_code := util.SubCmdVal["user_code"]
 
 	payload := fmt.Sprintf(`{"=id":%s,"$inp":"Local","$utf":"8>1252","Bypass":%d,"$pin":"%s"}`,zone, mode, user_code)
-	response, err := mqtt.SendCommand(topic, payload)
+	response, err := mqtt.SendCommand(SUB_TOPIC, topic, payload)
 
 	if err != nil {
-		return "", errors.New("Error sending MQTT Command")
+		return errors.New("Error sending MQTT Command")
 	}
 
 	fmt.Println(response)
 
-	return "", nil
+	return nil
 }
 
 // should assign this->subcmds
